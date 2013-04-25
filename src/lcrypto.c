@@ -1894,18 +1894,21 @@ static int x509_ca_add_pem(lua_State *L)
     return 1;
 }
 
+#define LUACRYPTO_EVP_CIPHER_CTX_get_iv(ctx) &(ctx)->iv[0]
+
 #define IMPLEMENT_EVP_RESETIV(NAME, MTNAME)                                   \
 static int NAME##_resetiv(lua_State *L){                                      \
   EVP_CIPHER_CTX *c = (EVP_CIPHER_CTX*)luaL_checkudata(L, 1, MTNAME);         \
   size_t iv_len, i; const char *iv;                                           \
+  char* ctx_iv = LUACRYPTO_EVP_CIPHER_CTX_get_iv(c);                          \
   if(lua_istable(L, 2)){                                                      \
     iv_len = lua_objlen(L, 2);                                                \
-    if(iv_len > (size_t)EVP_CIPHER_iv_length(c->cipher)){                     \
+    if(iv_len > (size_t)EVP_CIPHER_CTX_iv_length(c)){                         \
       return luaL_argerror(L, 2, "invalid iv length");                        \
     }                                                                         \
     for(i = 0; i<iv_len; ++i){                                                \
       lua_rawgeti(L, 2, i+1);                                                 \
-      c->iv[i] = (int)lua_tonumber(L,-1);                                     \
+      ctx_iv[i] = (int)lua_tonumber(L,-1);                                    \
       lua_pop(L, 1);                                                          \
     }                                                                         \
     return 0;                                                                 \
@@ -1914,7 +1917,7 @@ static int NAME##_resetiv(lua_State *L){                                      \
     if(iv_len > (size_t)EVP_CIPHER_iv_length(c->cipher)) {                    \
       return luaL_argerror(L, 2, "invalid iv length");                        \
     }                                                                         \
-    memcpy(&c->iv[0], iv, iv_len);                                            \
+    memcpy(ctx_iv, iv, iv_len);                                               \
   }                                                                           \
   return luaL_argerror(L, 2, "invalid iv value");                             \
 }
