@@ -1776,6 +1776,39 @@ static int x509_ca_add_pem(lua_State *L)
   return 1;
 }
 
+#define IMPLEMENT_EVP_RESETIV(NAME, MTNAME)                                   \
+static int NAME##_resetiv(lua_State *L){                                      \
+  EVP_CIPHER_CTX *c = (EVP_CIPHER_CTX*)luaL_checkudata(L, 1, MTNAME);         \
+  size_t iv_len, i; const char *iv;                                           \
+  if(lua_istable(L, 2)){                                                      \
+    iv_len = lua_objlen(L, 2);                                                \
+    if(iv_len > (size_t)EVP_CIPHER_iv_length(c->cipher)){                     \
+      return luaL_argerror(L, 2, "invalid iv length");                        \
+    }                                                                         \
+    for(i = 0; i<iv_len; ++i){                                                \
+      lua_rawgeti(L, 2, i+1);                                                 \
+      c->iv[i] = (int)lua_tonumber(L,-1);                                     \
+      lua_pop(L, 1);                                                          \
+    }                                                                         \
+    return 0;                                                                 \
+  }                                                                           \
+  else if( iv = (char*)lua_tolstring(L, 2, &iv_len) ){                        \
+    if(iv_len > (size_t)EVP_CIPHER_iv_length(c->cipher)) {                    \
+      return luaL_argerror(L, 2, "invalid iv length");                        \
+    }                                                                         \
+    memcpy(&c->iv[0], iv, iv_len);                                            \
+  }                                                                           \
+  return luaL_argerror(L, 2, "invalid iv value");                             \
+}
+
+IMPLEMENT_EVP_RESETIV(encrypt, LUACRYPTO_ENCRYPTNAME)
+IMPLEMENT_EVP_RESETIV(decrypt, LUACRYPTO_DECRYPTNAME)
+IMPLEMENT_EVP_RESETIV(sign,    LUACRYPTO_SIGNNAME)
+IMPLEMENT_EVP_RESETIV(verify,  LUACRYPTO_VERIFYNAME)
+IMPLEMENT_EVP_RESETIV(seal,    LUACRYPTO_SEALNAME)
+IMPLEMENT_EVP_RESETIV(open,    LUACRYPTO_OPENNAME)
+
+
 /*
 ** Create a metatable and leave it on top of the stack.
 */
@@ -1821,6 +1854,7 @@ static void create_call_table(lua_State *L, const char *name, lua_CFunction crea
     { "final", name##_final },          \
     { "tostring", name##_tostring },    \
     { "update", name##_update },        \
+    { "resetiv", name##_resetiv },      \
     {NULL, NULL},                       \
   }
 
