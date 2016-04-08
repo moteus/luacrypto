@@ -35,13 +35,17 @@ LUACRYPTO_API int luaopen_crypto(lua_State *L);
 
 #if LUA_VERSION_NUM >= 502
 
+#ifndef LUA_COMPAT_MODULE
 static void luaL_register (lua_State *L, const char *libname, const luaL_Reg *l)
 {
     if (libname) lua_newtable(L);
     luaL_setfuncs(L, l, 0);
 }
+#endif
 
-#define lua_objlen lua_rawlen
+#ifndef lua_objlen
+#  define lua_objlen lua_rawlen
+#endif
 
 #endif
 
